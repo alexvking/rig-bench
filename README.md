@@ -11,7 +11,18 @@ Cross-platform CLI benchmark harness and interactive ECharts Web UI for comparin
 
 ---
 
-## Quick Start (Windows 11 — AMD AM5 / Desktop PC)
+## Option 1: Standalone Windows GUI (`RigBench.exe` — No Python or Git Required)
+
+1. **Download [`RigBench.exe`](https://github.com/alexvking/rig-bench/releases/latest/download/RigBench.exe)** (~47 MB, Windows 10/11 x64).
+2. Double-click `RigBench.exe` (if SmartScreen prompts, click **More info → Run anyway**).
+3. Click **Install Missing Tools** (provisions `7-Zip`, `fio`, `Blender`, `uv`, `llama-bench` CUDA/Vulkan, and optional 7B LLM model), then click **Run Full Benchmark**.
+4. Click **Open Web UI** to explore your scores, thermals, and side-by-side comparisons at `http://localhost:8788/`.
+
+*(Self-build from source: run `.\build_exe.ps1` with `uv` installed.)*
+
+---
+
+## Option 2: CLI / AI-Assisted Setup (Windows 11 — AMD AM5 / Desktop PC)
 
 ### 1. Prerequisites
 Open PowerShell and install `uv` and `git` if not already installed:
