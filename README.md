@@ -23,7 +23,7 @@ winget install --id Git.Git -e
 
 ### 2. Clone and Check Readiness
 ```powershell
-git clone <YOUR_GITHUB_REPO_URL>
+git clone https://github.com/alexvking/rig-bench.git
 cd rig-bench
 uv run bench.py status
 ```
@@ -70,7 +70,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/start_monitor.ps1
 
 ## Quick Start (macOS — Apple Silicon)
 ```bash
-git clone <YOUR_GITHUB_REPO_URL>
+git clone https://github.com/alexvking/rig-bench.git
 cd rig-bench
 uv run bench.py status
 uv run bench.py bootstrap --with-geekbench --tier1-model
