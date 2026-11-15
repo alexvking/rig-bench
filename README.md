@@ -55,6 +55,19 @@ Open **`http://localhost:8788`** in your browser.
 
 ---
 
+## Live Temperature and Fan RPM Dashboard (`rig-thermal-monitor/`)
+
+For continuous **2-second live temperature, fan RPM, and CSV logging** on Windows 10/11 (with an interactive Web UI at `http://localhost:8095/`), see [`rig-thermal-monitor/README.md`](rig-thermal-monitor/README.md) and [`rig-thermal-monitor/SKILL.md`](rig-thermal-monitor/SKILL.md):
+
+```powershell
+cd rig-thermal-monitor
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup_deps.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/probe.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/start_monitor.ps1
+```
+
+---
+
 ## Quick Start (macOS — Apple Silicon)
 ```bash
 git clone <YOUR_GITHUB_REPO_URL>

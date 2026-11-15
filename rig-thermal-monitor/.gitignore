@@ -1,0 +1,6 @@
+# Runtime data & local machine configs
+data/
+lib/
+config/sensors.json
+*.log
+*.bak

@@ -1,0 +1,80 @@
+{
+  "host": {
+    "name": "DESKTOP-EXAMPLE",
+    "summary": "AMD Ryzen · NVIDIA RTX · NVMe",
+    "port": 8095,
+    "intervalMs": 2000
+  },
+  "temps": [
+    {
+      "key": "mobo",
+      "label": "Motherboard",
+      "tag": "SYSTIN",
+      "id": "/lpc/nct6779d/0/temperature/2",
+      "color": "#1dd1a1",
+      "warn": 55,
+      "crit": 65,
+      "primary": true,
+      "enabled": true
+    },
+    {
+      "key": "cpu_tctl",
+      "label": "CPU Die",
+      "tag": "Tctl/Tdie",
+      "id": "/amdcpu/0/temperature/2",
+      "color": "#ff6b6b",
+      "warn": 80,
+      "crit": 92,
+      "primary": true,
+      "enabled": true
+    },
+    {
+      "key": "gpu_core",
+      "label": "GPU Core",
+      "tag": "RTX 4080",
+      "id": "/gpu-nvidia/0/temperature/0",
+      "color": "#54a0ff",
+      "warn": 78,
+      "crit": 87,
+      "primary": true,
+      "enabled": true
+    },
+    {
+      "key": "nvme_0",
+      "label": "NVMe SSD",
+      "tag": "NVMe",
+      "id": "/nvme/0/temperature/0",
+      "color": "#48dbfb",
+      "warn": 70,
+      "crit": 82,
+      "primary": true,
+      "enabled": true
+    }
+  ],
+  "fans": [
+    {
+      "key": "cpu_fan",
+      "label": "CPU Fan",
+      "tag": "Motherboard",
+      "id": "/lpc/nct6779d/0/fan/1",
+      "color": "#38bdf8",
+      "primary": true,
+      "enabled": true
+    },
+    {
+      "key": "gpu_fan_1",
+      "label": "GPU Fan 1",
+      "tag": "RTX 4080",
+      "id": "/gpu-nvidia/0/fan/1",
+      "color": "#818cf8",
+      "primary": true,
+      "enabled": true
+    }
+  ],
+  "metrics": {
+    "cpu_w": "/amdcpu/0/power/0",
+    "cpu_pct": "/amdcpu/0/load/0",
+    "gpu_w": "/gpu-nvidia/0/power/0",
+    "gpu_pct": "/gpu-nvidia/0/load/0"
+  }
+}

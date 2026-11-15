@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rig Thermal &amp; Fan Monitor</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #121722;
+    --panel-hover: #171e2c;
+    --border: #222b3a;
+    --text: #e6edf3;
+    --muted: #7d899c;
+    --dim: #4c566a;
+    --ok: #2ecc71;
+    --warn: #f59e0b;
+    --crit: #ef4444;
+    --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1520px;
+    margin: 0 auto;
+    padding: 14px 16px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 4px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .dot-live {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ok); box-shadow: 0 0 8px var(--ok); flex-shrink: 0;
+  }
+  .dot-live.offline { background: var(--crit); box-shadow: 0 0 8px var(--crit); }
+  .host { font-weight: 700; font-size: 16px; letter-spacing: 0.02em; }
+  .hw-sub { color: var(--muted); font-size: 12px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .seg {
+    display: inline-flex; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
+  }
+  .seg button, .btn {
+    background: transparent; color: var(--muted); border: none;
+    padding: 5px 10px; font-family: var(--mono); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: background 0.12s, color 0.12s;
+    text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .seg button:hover, .btn:hover { color: var(--text); background: var(--panel-hover); }
+  .seg button.active { background: #253146; color: #fff; }
+  .btn { background: var(--panel); border: 1px solid var(--border); border-radius: 7px; }
+  .btn.zoom-reset { color: #fbbf24; border-color: #785515; display: none; }
+  .clock { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 78px; text-align: right; }
+
+  .sec-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+    gap: 10px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent, #54a0ff);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, opacity 0.15s, border-color 0.15s;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
+  }
+  .card:hover { background: var(--panel-hover); }
+  .card.off { opacity: 0.40; border-top-color: var(--dim) !important; }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+  .card-label { font-weight: 600; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-tag { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+  .card-val {
+    font-family: var(--mono); font-size: 28px; font-weight: 700;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05;
+  }
+  .card-val.fan-val { font-size: 24px; }
+  .card-val.warn { color: var(--warn); }
+  .card-val.crit { color: var(--crit); }
+  .card-sub {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 14px;
+  }
+  .card-stats {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid rgba(255,255,255,0.05); padding-top: 5px;
+  }
+  .card-stats span b { color: #b7c2d0; font-weight: 600; }
+
+  .chart-panel {
+    position: relative; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 10px 6px;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 340px; }
+  .chart-wrap.fan-chart { height: 220px; }
+  @media (max-width: 760px) {
+    .chart-wrap { height: 260px; }
+    .chart-wrap.fan-chart { height: 180px; }
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+  .tooltip {
+    position: absolute; pointer-events: none;
+    background: rgba(11, 14, 20, 0.94); border: 1px solid #334155; border-radius: 6px;
+    padding: 7px 9px; font-family: var(--mono); font-size: 11.5px;
+    z-index: 20; display: none; min-width: 170px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  }
+  .tt-time {
+    color: #cbd5e1; font-weight: 700; margin-bottom: 4px; padding-bottom: 3px;
+    border-bottom: 1px solid #222b3a; display: flex; justify-content: space-between; gap: 8px;
+  }
+  .tt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 0; }
+  .tt-name { display: inline-flex; align-items: center; gap: 6px; color: #94a3b8; }
+  .tt-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .tt-val { color: #f8fafc; font-weight: 600; }
+
+  .footbar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  }
+  .aux-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .pill {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 8px; cursor: pointer; color: var(--muted); user-select: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pill:hover { color: var(--text); }
+  .pill.on { color: var(--text); border-color: var(--accent, #64748b); }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent, #64748b); opacity: 0.4; }
+  .pill.on .pill-dot { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <span id="liveDot" class="dot-live"></span>
+      <span id="hostName" class="host">THERMAL MONITOR</span>
+      <span id="hwSummary" class="hw-sub">Loading hardware...</span>
+    </div>
+    <div class="controls">
+      <button id="zoomResetBtn" class="btn zoom-reset">Reset Zoom</button>
+      <div class="seg" id="rangeSeg">
+        <button data-h="0.0833">5m</button>
+        <button data-h="0.25">15m</button>
+        <button data-h="1">1h</button>
+        <button data-h="6">6h</button>
+        <button data-h="12">12h</button>
+        <button data-h="24" class="active">24h</button>
+        <button data-h="168">7d</button>
+        <button data-h="0">All</button>
+      </div>
+      <div class="seg" id="unitSeg">
+        <button data-u="C" class="active">°C</button>
+        <button data-u="F">°F</button>
+      </div>
+      <a id="csvBtn" class="btn" href="/api/export.csv?hours=24">CSV</a>
+      <span id="clockTxt" class="clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-head"><span>Temperatures</span><span id="powerMeta"></span></div>
+  <div class="cards" id="tempCardsGrid"></div>
+
+  <div class="chart-panel">
+    <div class="chart-wrap" id="tempChartWrap">
+      <canvas id="tempCanvas"></canvas>
+      <div id="tempTooltip" class="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="sec-head" id="fanSecHead"><span>Fans (RPM)</span><span id="fanHint">Click to toggle · Double-click to solo</span></div>
+  <div class="cards" id="fanCardsGrid"></div>
+
+  <div class="chart-panel" id="fanChartPanel">
+    <div class="chart-wrap fan-chart" id="fanChartWrap">
+      <canvas id="fanCanvas"></canvas>
+      <div id="fanTooltip" class="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="footbar">
+    <div class="aux-group" id="auxBar"></div>
+    <div id="sampleMeta">--</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  let state = {
+    cfg: null,
+    temps: [],
+    fans: [],
+    metricKeys: [],
+    allKeys: [],
+    hours: 24,
+    unit: localStorage.getItem('tm_unit') || 'C',
+    series: null,
+    stats: {},
+    bootTimeMs: 0,
+    totalSamples: 0,
+    logBytes: 0,
+    lastTs: 0,
+    hoverIdx: -1,
+    hoverTarget: null,
+    zoomMinMs: null,
+    zoomMaxMs: null,
+    dragStartX: null,
+    dragCurrX: null,
+    dragTarget: null
+  };
+
+  const tempGrid = document.getElementById('tempCardsGrid');
+  const fanGrid  = document.getElementById('fanCardsGrid');
+  const auxBar   = document.getElementById('auxBar');
+  const tempCanvas = document.getElementById('tempCanvas');
+  const fanCanvas  = document.getElementById('fanCanvas');
+  const tempTip  = document.getElementById('tempTooltip');
+  const fanTip   = document.getElementById('fanTooltip');
+  const zoomResetBtn = document.getElementById('zoomResetBtn');
+  const csvBtn   = document.getElementById('csvBtn');
+
+  const cardEls = {};
+  const pillEls = {};
+  const chartGeoms = { temp: null, fan: null };
+
+  function toUnit(c) {
+    if (c === null || c === undefined || Number.isNaN(c)) return null;
+    return state.unit === 'F' ? (c * 9 / 5 + 32) : c;
+  }
+  function fmtTemp(c, withUnit = false) {
+    const v = toUnit(c);
+    if (v === null) return '--';
+    return v.toFixed(1) + (withUnit ? ('°' + state.unit) : '°');
+  }
+  function fmtRpm(v, withUnit = false) {
+    if (v === null || v === undefined || Number.isNaN(v)) return '--';
+    return Math.round(v) + (withUnit ? ' RPM' : '');
+  }
+  function fmtBytes(b) {
+    if (!b || b < 1024) return (b || 0) + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(2) + ' MB';
+  }
+  function fmtClock(ms) {
+    return new Date(ms).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  function fmtAxisTime(ms, spanMs) {
+    const d = new Date(ms);
+    if (spanMs > 36 * 3600 * 1000) {
+      return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function fmtTooltipTime(ms) {
+    const d = new Date(ms);
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+  }
+
+  function saveVis() {
+    const m = {};
+    state.temps.concat(state.fans).forEach(s => { m[s.key] = s.on; });
+    try { localStorage.setItem('tm_vis_v2', JSON.stringify(m)); } catch {}
+  }
+
+  function buildUiFromConfig(cfg) {
+    state.cfg = cfg;
+    if (cfg.host) {
+      if (cfg.host.name) document.getElementById('hostName').textContent = cfg.host.name;
+      if (cfg.host.summary) document.getElementById('hwSummary').textContent = cfg.host.summary;
+    }
+
+    let savedVis = {};
+    try { savedVis = JSON.parse(localStorage.getItem('tm_vis_v2') || '{}') || {}; } catch {}
+
+    state.temps = (cfg.temps || []).map(t => ({
+      ...t,
+      kind: 'temp',
+      on: typeof savedVis[t.key] === 'boolean' ? savedVis[t.key] : (t.enabled !== false)
+    }));
+    state.fans = (cfg.fans || []).map(f => ({
+      ...f,
+      kind: 'fan',
+      on: typeof savedVis[f.key] === 'boolean' ? savedVis[f.key] : (f.enabled !== false)
+    }));
+    state.metricKeys = cfg.metrics ? Object.keys(cfg.metrics).filter(k => cfg.metrics[k]) : [];
+    state.allKeys = state.temps.map(t => t.key).concat(state.fans.map(f => f.key)).concat(state.metricKeys);
+
+    tempGrid.innerHTML = '';
+    fanGrid.innerHTML = '';
+    auxBar.innerHTML = '';
+
+    const makeCard = (s, grid, list, isFan) => {
+      const el = document.createElement('div');
+      el.className = 'card' + (s.on ? '' : ' off');
+      el.style.setProperty('--accent', s.color || '#54a0ff');
+      el.title = 'Click: toggle · Double-click: solo';
+      el.innerHTML = `
+        <div class="card-head">
+          <span class="card-label">${s.label}</span>
+          <span class="card-tag">${s.tag || ''}</span>
+        </div>
+        <div class="card-val ${isFan ? 'fan-val' : ''}" data-role="val">--</div>
+        <div class="card-sub" data-role="sub"></div>
+        <div class="card-stats">
+          <span>L <b data-role="min">--</b></span>
+          <span>Ø <b data-role="avg">--</b></span>
+          <span>H <b data-role="max">--</b></span>
+        </div>
+      `;
+      el.addEventListener('click', () => {
+        s.on = !s.on;
+        el.classList.toggle('off', !s.on);
+        saveVis();
+        scheduleDraw();
+      });
+      el.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        const primaries = list.filter(x => x.enabled !== false);
+        const onlyThis = s.on && primaries.every(x => x === s ? x.on : !x.on);
+        primaries.forEach(x => {
+          x.on = onlyThis ? true : (x === s);
+          if (cardEls[x.key]) cardEls[x.key].root.classList.toggle('off', !x.on);
+        });
+        saveVis();
+        scheduleDraw();
+      });
+      grid.appendChild(el);
+      cardEls[s.key] = {
+        root: el,
+        val: el.querySelector('[data-role="val"]'),
+        sub: el.querySelector('[data-role="sub"]'),
+        min: el.querySelector('[data-role="min"]'),
+        avg: el.querySelector('[data-role="avg"]'),
+        max: el.querySelector('[data-role="max"]')
+      };
+    };
+
+    const makePill = (s, prefix) => {
+      const p = document.createElement('div');
+      p.className = 'pill' + (s.on ? ' on' : '');
+      p.style.setProperty('--accent', s.color || '#94a3b8');
+      p.innerHTML = `<span class="pill-dot"></span><span>${prefix}${s.label}</span><b data-role="val">--</b>`;
+      p.addEventListener('click', () => {
+        s.on = !s.on;
+        p.classList.toggle('on', s.on);
+        saveVis();
+        scheduleDraw();
+      });
+      auxBar.appendChild(p);
+      pillEls[s.key] = { root: p, val: p.querySelector('[data-role="val"]') };
+    };
+
+    state.temps.forEach(t => {
+      if (t.enabled !== false && t.primary !== false) makeCard(t, tempGrid, state.temps, false);
+      else makePill(t, '');
+    });
+
+    const activeFans = state.fans.filter(f => f.enabled !== false);
+    const hiddenFans = state.fans.filter(f => f.enabled === false);
+    if (state.fans.length === 0) {
+      document.getElementById('fanSecHead').style.display = 'none';
+      fanGrid.style.display = 'none';
+      document.getElementById('fanChartPanel').style.display = 'none';
+    } else {
+      activeFans.forEach(f => makeCard(f, fanGrid, state.fans, true));
+      hiddenFans.forEach(f => makePill(f, 'Fan: '));
+      if (activeFans.length === 0) {
+        fanGrid.style.display = 'none';
+      }
+    }
+  }
+
+  function latestVal(key) {
+    const st = state.stats[key];
+    if (st && st.now !== null && st.now !== undefined) return st.now;
+    if (!state.series || !state.series[key]) return null;
+    const arr = state.series[key];
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] !== null && arr[i] !== undefined) return arr[i];
+    }
+    return null;
+  }
+
+  function renderCards() {
+    state.temps.forEach(s => {
+      const st = state.stats[s.key] || {};
+      const nowC = latestVal(s.key);
+      if (cardEls[s.key]) {
+        const c = cardEls[s.key];
+        c.val.textContent = fmtTemp(nowC, true);
+        c.val.classList.toggle('warn', nowC !== null && s.warn && nowC >= s.warn && (!s.crit || nowC < s.crit));
+        c.val.classList.toggle('crit', nowC !== null && s.crit && nowC >= s.crit);
+        c.min.textContent = fmtTemp(st.min);
+        c.avg.textContent = fmtTemp(st.avg);
+        c.max.textContent = fmtTemp(st.max);
+        c.sub.textContent = s.warn && s.warn < 500 ? `Warn ${fmtTemp(s.warn, true)}` : '';
+      } else if (pillEls[s.key]) {
+        pillEls[s.key].val.textContent = fmtTemp(nowC);
+      }
+    });
+
+    state.fans.forEach(f => {
+      const st = state.stats[f.key] || {};
+      const nowR = latestVal(f.key);
+      if (cardEls[f.key]) {
+        const c = cardEls[f.key];
+        c.val.textContent = fmtRpm(nowR, true);
+        c.min.textContent = fmtRpm(st.min);
+        c.avg.textContent = fmtRpm(st.avg);
+        c.max.textContent = fmtRpm(st.max);
+      } else if (pillEls[f.key]) {
+        pillEls[f.key].val.textContent = fmtRpm(nowR, true);
+      }
+    });
+
+    const cw = latestVal('cpu_w'), cp = latestVal('cpu_pct'), gw = latestVal('gpu_w'), gp = latestVal('gpu_pct');
+    const pParts = [];
+    if (cw !== null) pParts.push(`CPU ${cw.toFixed(0)}W` + (cp !== null ? ` (${cp.toFixed(0)}%)` : ''));
+    if (gw !== null) pParts.push(`GPU ${gw.toFixed(0)}W` + (gp !== null ? ` (${gp.toFixed(0)}%)` : ''));
+    document.getElementById('powerMeta').textContent = pParts.join(' · ');
+    document.getElementById('sampleMeta').textContent =
+      `${state.totalSamples.toLocaleString()} pts · ${fmtBytes(state.logBytes)}`;
+  }
+
+  function getBounds() {
+    const ts = state.series ? state.series.ts : [];
+    const nowMs = ts.length ? ts[ts.length - 1] : Date.now();
+    let minX, maxX;
+    if (state.zoomMinMs !== null && state.zoomMaxMs !== null) {
+      minX = state.zoomMinMs; maxX = state.zoomMaxMs;
+    } else if (state.hours > 0) {
+      maxX = Math.max(nowMs, Date.now());
+      minX = maxX - state.hours * 3600 * 1000;
+    } else {
+      minX = ts.length ? ts[0] : (nowMs - 3600000);
+      maxX = Math.max(nowMs, minX + 60000);
+    }
+    return { minX, maxX };
+  }
+
+  function drawOneChart(kind, canvasEl, list, isFan) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvasEl.getBoundingClientRect();
+    const W = Math.max(200, Math.floor(rect.width));
+    const H = Math.max(120, Math.floor(rect.height));
+    if (canvasEl.width !== Math.floor(W * dpr) || canvasEl.height !== Math.floor(H * dpr)) {
+      canvasEl.width = Math.floor(W * dpr);
+      canvasEl.height = Math.floor(H * dpr);
+    }
+    const ctx = canvasEl.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = { l: isFan ? 54 : 46, r: 16, t: 10, b: 24 };
+    const pw = W - pad.l - pad.r;
+    const ph = H - pad.t - pad.b;
+    if (pw <= 10 || ph <= 10) return;
+
+    const { minX, maxX } = getBounds();
+    const spanX = Math.max(1000, maxX - minX);
+    const ser = state.series;
+    const ts = ser ? ser.ts : [];
+    const active = list.filter(s => s.on);
+
+    let lo = Infinity, hi = -Infinity;
+    if (ser && ts.length && active.length) {
+      for (let i = 0; i < ts.length; i++) {
+        const t = ts[i];
+        if (t < minX || t > maxX) continue;
+        for (let k = 0; k < active.length; k++) {
+          const v = ser[active[k].key] ? ser[active[k].key][i] : null;
+          if (v !== null && v !== undefined && !Number.isNaN(v)) {
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+          }
+        }
+      }
+    }
+
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
+      lo = isFan ? 0 : 30;
+      hi = isFan ? 2000 : 75;
+    }
+
+    let loU = isFan ? lo : toUnit(lo);
+    let hiU = isFan ? hi : toUnit(hi);
+    let stepU;
+    if (isFan) {
+      const rawSpan = Math.max(200, hiU - loU);
+      stepU = rawSpan > 2000 ? 500 : (rawSpan > 800 ? 250 : 100);
+      loU = Math.max(0, Math.floor((loU - stepU * 0.4) / stepU) * stepU);
+      hiU = Math.ceil((hiU + stepU * 0.4) / stepU) * stepU;
+      if (hiU - loU < stepU * 2) hiU = loU + stepU * 2;
+    } else {
+      stepU = (hiU - loU) > 45 ? 10 : 5;
+      loU = Math.floor((loU - 3) / stepU) * stepU;
+      hiU = Math.ceil((hiU + 3) / stepU) * stepU;
+      if (hiU - loU < stepU * 2) hiU = loU + stepU * 2;
+    }
+
+    const xOf = (ms) => pad.l + ((ms - minX) / spanX) * pw;
+    const yOf = (u) => pad.t + (1 - (u - loU) / (hiU - loU)) * ph;
+    chartGeoms[kind] = { pad, pw, ph, minX, maxX, spanX, loU, hiU, xOf, yOf };
+
+    // Y Grid
+    ctx.font = '11px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let u = loU; u <= hiU + 0.01; u += stepU) {
+      const y = Math.round(yOf(u)) + 0.5;
+      ctx.strokeStyle = '#1d2533';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + pw, y);
+      ctx.stroke();
+      ctx.fillStyle = '#7d899c';
+      ctx.fillText(isFan ? Math.round(u) : (Math.round(u) + '°'), pad.l - 7, y);
+    }
+
+    // X Time Ticks
+    const targetTicks = Math.max(3, Math.min(9, Math.floor(pw / 125)));
+    const niceIntervals = [30000,60000,120000,300000,600000,900000,1800000,3600000,7200000,10800000,14400000,21600000,43200000,86400000];
+    let tickStep = niceIntervals[niceIntervals.length - 1];
+    for (const iv of niceIntervals) { if (spanX / iv <= targetTicks) { tickStep = iv; break; } }
+    const firstTick = Math.ceil(minX / tickStep) * tickStep;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let t = firstTick; t <= maxX; t += tickStep) {
+      const x = Math.round(xOf(t)) + 0.5;
+      ctx.strokeStyle = '#19202d';
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke();
+      ctx.fillStyle = '#7d899c';
+      ctx.fillText(fmtAxisTime(t, spanX), x, pad.t + ph + 5);
+    }
+
+    // Series
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.l, pad.t, pw, ph);
+    ctx.clip();
+
+    const maxGapMs = Math.max(60000, spanX * 0.03);
+    if (ser && ts.length) {
+      active.forEach(s => {
+        const arr = ser[s.key];
+        if (!arr) return;
+        ctx.strokeStyle = s.color;
+        ctx.fillStyle = s.color;
+        ctx.lineWidth = 1.8;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        let seg = [];
+        const flush = () => {
+          if (!seg.length) return;
+          const wPx = seg[seg.length - 1].x - seg[0].x;
+          if (seg.length >= 2 && wPx >= 2.5) {
+            ctx.beginPath();
+            ctx.moveTo(seg[0].x, seg[0].y);
+            for (let k = 1; k < seg.length; k++) ctx.lineTo(seg[k].x, seg[k].y);
+            ctx.stroke();
+          }
+          if (seg.length === 1 || wPx < 6) {
+            for (let k = 0; k < seg.length; k++) {
+              ctx.beginPath(); ctx.arc(seg[k].x, seg[k].y, 2.8, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+          seg = [];
+        };
+
+        let prevT = -1;
+        for (let i = 0; i < ts.length; i++) {
+          const t = ts[i];
+          if (t < minX - maxGapMs || t > maxX + maxGapMs) continue;
+          const raw = arr[i];
+          if (raw === null || raw === undefined || Number.isNaN(raw)) continue;
+          if (prevT > 0 && (t - prevT) > maxGapMs) flush();
+          seg.push({ x: xOf(t), y: yOf(isFan ? raw : toUnit(raw)) });
+          prevT = t;
+        }
+        flush();
+      });
+    }
+
+    if (state.dragStartX !== null && state.dragCurrX !== null && state.dragTarget === kind) {
+      const x1 = Math.max(pad.l, Math.min(state.dragStartX, state.dragCurrX));
+      const x2 = Math.min(pad.l + pw, Math.max(state.dragStartX, state.dragCurrX));
+      ctx.fillStyle = 'rgba(84, 160, 255, 0.16)';
+      ctx.strokeStyle = 'rgba(84, 160, 255, 0.7)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(x1, pad.t, x2 - x1, ph);
+      ctx.strokeRect(x1, pad.t, x2 - x1, ph);
+    }
+
+    if (state.hoverIdx >= 0 && ser && state.hoverIdx < ts.length) {
+      const ht = ts[state.hoverIdx];
+      if (ht >= minX && ht <= maxX) {
+        const hx = Math.round(xOf(ht)) + 0.5;
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+
+        active.forEach(s => {
+          const v = ser[s.key] ? ser[s.key][state.hoverIdx] : null;
+          if (v !== null && v !== undefined) {
+            ctx.fillStyle = s.color;
+            ctx.beginPath(); ctx.arc(hx, yOf(isFan ? v : toUnit(v)), 3.8, 0, Math.PI * 2); ctx.fill();
+          }
+        });
+      }
+    }
+    ctx.restore();
+  }
+
+  let rafPending = false;
+  function scheduleDraw() {
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        drawOneChart('temp', tempCanvas, state.temps, false);
+        if (state.fans.length > 0) drawOneChart('fan', fanCanvas, state.fans, true);
+      });
+    }
+  }
+
+  function findNearestIndex(kind, mouseX) {
+    const g = chartGeoms[kind];
+    if (!g || !state.series || !state.series.ts.length) return -1;
+    const rel = Math.max(0, Math.min(1, (mouseX - g.pad.l) / g.pw));
+    const targetMs = g.minX + rel * g.spanX;
+    const ts = state.series.ts;
+    let lo = 0, hi = ts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (ts[mid] < targetMs) lo = mid + 1; else hi = mid;
+    }
+    let best = lo;
+    if (lo > 0 && Math.abs(ts[lo - 1] - targetMs) < Math.abs(ts[lo] - targetMs)) best = lo - 1;
+    if (ts[best] < g.minX || ts[best] > g.maxX) return -1;
+    return best;
+  }
+
+  function bindChartEvents(kind, canvasEl, tipEl, wrapEl, list, isFan) {
+    canvasEl.addEventListener('mousemove', (e) => {
+      const r = canvasEl.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      if (state.dragStartX !== null && state.dragTarget === kind) state.dragCurrX = mx;
+      state.hoverIdx = findNearestIndex(kind, mx);
+      state.hoverTarget = kind;
+
+      if (state.hoverIdx >= 0 && state.series) {
+        const ser = state.series;
+        let html = `<div class="tt-time"><span>${fmtTooltipTime(ser.ts[state.hoverIdx])}</span></div>`;
+        let any = false;
+        list.filter(s => s.on).forEach(s => {
+          const v = ser[s.key] ? ser[s.key][state.hoverIdx] : null;
+          if (v !== null && v !== undefined) {
+            any = true;
+            html += `<div class="tt-row"><span class="tt-name"><span class="tt-dot" style="background:${s.color}"></span>${s.label}</span><span class="tt-val">${isFan ? fmtRpm(v, true) : fmtTemp(v, true)}</span></div>`;
+          }
+        });
+        if (any) {
+          tipEl.innerHTML = html;
+          tipEl.style.display = 'block';
+          const wr = wrapEl.getBoundingClientRect();
+          const tr = tipEl.getBoundingClientRect();
+          let lx = e.clientX - wr.left + 14;
+          let ly = e.clientY - wr.top + 10;
+          if (lx + tr.width > wr.width - 8) lx = e.clientX - wr.left - tr.width - 14;
+          if (ly + tr.height > wr.height - 8) ly = Math.max(6, wr.height - tr.height - 8);
+          tipEl.style.left = Math.max(6, lx) + 'px';
+          tipEl.style.top  = Math.max(6, ly) + 'px';
+        } else tipEl.style.display = 'none';
+      } else tipEl.style.display = 'none';
+      scheduleDraw();
+    });
+
+    canvasEl.addEventListener('mouseleave', () => {
+      state.hoverIdx = -1;
+      tipEl.style.display = 'none';
+      scheduleDraw();
+    });
+
+    canvasEl.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || !chartGeoms[kind]) return;
+      const r = canvasEl.getBoundingClientRect();
+      state.dragStartX = e.clientX - r.left;
+      state.dragCurrX = state.dragStartX;
+      state.dragTarget = kind;
+    });
+
+    canvasEl.addEventListener('dblclick', () => {
+      if (state.zoomMinMs !== null) {
+        state.zoomMinMs = null; state.zoomMaxMs = null;
+        zoomResetBtn.style.display = 'none';
+        scheduleDraw();
+      }
+    });
+  }
+
+  window.addEventListener('mouseup', () => {
+    if (state.dragStartX !== null && state.dragCurrX !== null && state.dragTarget && chartGeoms[state.dragTarget]) {
+      const g = chartGeoms[state.dragTarget];
+      if (Math.abs(state.dragCurrX - state.dragStartX) > 12) {
+        const r1 = Math.max(0, Math.min(1, (Math.min(state.dragStartX, state.dragCurrX) - g.pad.l) / g.pw));
+        const r2 = Math.max(0, Math.min(1, (Math.max(state.dragStartX, state.dragCurrX) - g.pad.l) / g.pw));
+        if (r2 - r1 > 0.005) {
+          state.zoomMinMs = g.minX + r1 * g.spanX;
+          state.zoomMaxMs = g.minX + r2 * g.spanX;
+          zoomResetBtn.style.display = 'inline-flex';
+        }
+      }
+    }
+    state.dragStartX = null; state.dragCurrX = null; state.dragTarget = null;
+    scheduleDraw();
+  });
+
+  document.querySelectorAll('#rangeSeg button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.hours = parseFloat(btn.dataset.h);
+      state.zoomMinMs = null; state.zoomMaxMs = null;
+      zoomResetBtn.style.display = 'none';
+      csvBtn.href = '/api/export.csv?hours=' + (state.hours <= 0 ? 0 : Math.ceil(state.hours));
+      loadHistory();
+    });
+  });
+
+  document.querySelectorAll('#unitSeg button').forEach(btn => {
+    if (btn.dataset.u === state.unit) {
+      document.querySelectorAll('#unitSeg button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#unitSeg button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.unit = btn.dataset.u;
+      try { localStorage.setItem('tm_unit', state.unit); } catch {}
+      renderCards();
+      scheduleDraw();
+    });
+  });
+
+  zoomResetBtn.addEventListener('click', () => {
+    state.zoomMinMs = null; state.zoomMaxMs = null;
+    zoomResetBtn.style.display = 'none';
+    scheduleDraw();
+  });
+
+  window.addEventListener('resize', scheduleDraw);
+
+  async function loadHistory() {
+    try {
+      const res = await fetch(`/api/history?hours=${state.hours}&maxPoints=1800`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      document.getElementById('liveDot').classList.remove('offline');
+      state.series = data.series;
+      state.stats = data.stats || {};
+      state.bootTimeMs = data.bootTimeMs || 0;
+      state.totalSamples = data.totalSamples || 0;
+      state.logBytes = data.logBytes || 0;
+      const ts = data.series.ts;
+      state.lastTs = ts.length ? ts[ts.length - 1] : 0;
+      document.getElementById('clockTxt').textContent = fmtClock(data.nowMs || Date.now());
+      renderCards();
+      scheduleDraw();
+    } catch {
+      document.getElementById('liveDot').classList.add('offline');
+    }
+  }
+
+  let pollTicks = 0;
+  async function pollLive() {
+    pollTicks++;
+    if (!state.series || pollTicks % 45 === 0) return loadHistory();
+    try {
+      const res = await fetch(`/api/live?since=${state.lastTs}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      document.getElementById('liveDot').classList.remove('offline');
+      document.getElementById('clockTxt').textContent = fmtClock(d.nowMs || Date.now());
+      state.totalSamples = d.totalSamples || state.totalSamples;
+      state.logBytes = d.logBytes || state.logBytes;
+
+      const add = d.series;
+      if (add && add.ts && add.ts.length > 0) {
+        const ser = state.series;
+        for (let i = 0; i < add.ts.length; i++) {
+          const t = add.ts[i];
+          if (t <= state.lastTs) continue;
+          ser.ts.push(t);
+          ser.cached.push(add.cached[i]);
+          state.allKeys.forEach(k => {
+            const v = add[k] ? add[k][i] : null;
+            if (!ser[k]) ser[k] = [];
+            ser[k].push(v);
+            if (v !== null && v !== undefined && !Number.isNaN(v)) {
+              if (!state.stats[k]) state.stats[k] = { now: v, min: v, avg: v, max: v };
+              const st = state.stats[k];
+              st.now = v;
+              if (st.min === null || v < st.min) st.min = v;
+              if (st.max === null || v > st.max) st.max = v;
+            }
+          });
+          state.lastTs = t;
+        }
+        if (state.hours > 0) {
+          const cutoff = state.lastTs - state.hours * 3600 * 1000;
+          let drop = 0;
+          while (drop < ser.ts.length && ser.ts[drop] < cutoff) drop++;
+          if (drop > 0) {
+            ser.ts.splice(0, drop);
+            ser.cached.splice(0, drop);
+            state.allKeys.forEach(k => { if (ser[k]) ser[k].splice(0, drop); });
+          }
+        }
+        renderCards();
+        scheduleDraw();
+      }
+    } catch {
+      document.getElementById('liveDot').classList.add('offline');
+    }
+  }
+
+  async function init() {
+    const cfgRes = await fetch('/api/config', { cache: 'no-store' });
+    const cfg = await cfgRes.json();
+    buildUiFromConfig(cfg);
+    bindChartEvents('temp', tempCanvas, tempTip, document.getElementById('tempChartWrap'), state.temps, false);
+    if (state.fans.length > 0) {
+      bindChartEvents('fan', fanCanvas, fanTip, document.getElementById('fanChartWrap'), state.fans, true);
+    }
+    await loadHistory();
+    setInterval(pollLive, (cfg.host && cfg.host.intervalMs) ? cfg.host.intervalMs : 2000);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

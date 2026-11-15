@@ -12,6 +12,7 @@ Whenever asked to set up, verify, or run `rig-bench` on this machine, read `.age
    `uv run bench.py run --profile-id <slug> --notes "<tuning description>"`
    *(Optional: pass `--price-usd <cost>` and `--idle-watts <watts>` for Performance-per-Dollar and Performance-per-Watt comparisons.)*
 5. **View Dashboard**: `uv run bench.py serve` → `http://localhost:8788`
+6. **Optional Windows Live Thermal and Fan UI (`:8095`)**: See [`rig-thermal-monitor/SKILL.md`](rig-thermal-monitor/SKILL.md) to auto-probe motherboard/CPU/GPU/NVMe sensors and run the 2-second CSV + Web UI logger.
 
 ## Rules
 * Never commit `.scratch/`, `.cache/`, `.venv/`, `rig-config.json`, or `results/incomplete/`.
