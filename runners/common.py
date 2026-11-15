@@ -4,14 +4,51 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Sequence
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+
+
+def _resolve_writable_root() -> Path:
+    if not IS_FROZEN:
+        return Path(__file__).resolve().parent.parent
+    exe_dir = Path(sys.executable).resolve().parent
+    candidate = exe_dir / "rig-bench-data"
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        probe = candidate / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return candidate
+    except Exception:
+        fallback = Path.home() / "rig-bench-data"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+REPO_ROOT = _resolve_writable_root()
 RESULTS_DIR = REPO_ROOT / "results" / "runs"
 DOCS_DIR = REPO_ROOT / "docs"
 DOCS_DATA_DIR = DOCS_DIR / "data"
 SCRATCH_DIR = REPO_ROOT / ".scratch"
+
+
+def ensure_frozen_docs() -> None:
+    """Copy bundled Web UI assets into the writable data directory when running as a frozen .exe."""
+    if not IS_FROZEN:
+        return
+    src_docs = BUNDLE_ROOT / "docs"
+    if not src_docs.is_dir():
+        return
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    for rel in ("index.html", "app.js", "styles.css"):
+        src = src_docs / rel
+        if src.is_file():
+            shutil.copy2(src, DOCS_DIR / rel)
+    DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def is_macos() -> bool:
