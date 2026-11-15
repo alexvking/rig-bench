@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import functools
-import io
 import json
+import multiprocessing
 import os
 import queue
 import shutil
@@ -11,7 +11,6 @@ import socket
 import subprocess
 import sys
 import threading
-import time
 import urllib.request
 import webbrowser
 import zipfile
@@ -39,6 +38,7 @@ from runners.common import (
     get_external_cache_dir,
     is_macos,
     is_windows,
+    win_subprocess_kwargs,
 )
 from runners.cpu import run_cpu_suite
 from runners.gpu_compute import MODEL_SPECS, run_gpu_compute_suite
@@ -262,6 +262,7 @@ class RigBenchApp:
                             check=False,
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL,
+                            **win_subprocess_kwargs(),
                         )
                     if not find_binary(["llama-bench"]):
                         ok = _download_latest_llama_bench(self.log)
@@ -407,11 +408,45 @@ class RigBenchApp:
         self.log(f"Imported {count} JSON file(s) and rebuilt manifest. Refresh Web UI to compare.")
 
 
+def _run_self_test_quick() -> int:
+    """Headless validation mode inside the frozen .exe (exercises ProcessPoolExecutor + ThermalMonitor + DuckDB + HTTP)."""
+    ensure_frozen_docs()
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    port = _pick_open_port(8788, 8799)
+    handler = functools.partial(LiveManifestHandler, directory=str(DOCS_DIR))
+    server = ReusableThreadingHTTPServer(("127.0.0.1", port), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    monitor = ThermalMonitor(interval_sec=2.0)
+    monitor.start()
+    monitor.set_suite("cpu")
+    cpu_res = run_cpu_suite(quick=True, skip_external_slow=True)
+    thermals = monitor.stop()
+    manifest_path = build_manifest()
+
+    report = {
+        "status": "ok",
+        "port": port,
+        "manifest_exists": manifest_path.is_file(),
+        "sha256_mt_mb_s": cpu_res.get("cpu_math_crypto", {}).get("sha256_multi_core_mb_s"),
+        "sevenzip_1t_mips": cpu_res.get("sevenzip", {}).get("single_thread", {}).get("total_rating_mips"),
+        "thermal_samples": thermals.get("sample_count"),
+        "thermal_backends": thermals.get("backends_used"),
+        "overall_thermals": thermals.get("overall"),
+    }
+    (REPO_ROOT / "self_test_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    server.server_close()
+    return 0
+
+
 def main() -> None:
+    if "--self-test-quick" in sys.argv:
+        raise SystemExit(_run_self_test_quick())
     root = tk.Tk()
     RigBenchApp(root)
     root.mainloop()
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

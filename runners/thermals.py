@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .common import get_external_cache_dir, is_macos, is_windows
+from .common import get_external_cache_dir, is_macos, is_windows, win_subprocess_kwargs
 
 
 def _find_lhm_dll() -> Path | None:
@@ -173,6 +173,7 @@ while ($true) {{
             text=True,
             encoding="utf-8",
             errors="replace",
+            **win_subprocess_kwargs(),
         )
         self._ps_reader = threading.Thread(target=self._read_ps_stdout, daemon=True)
         self._ps_reader.start()
@@ -207,6 +208,7 @@ while ($true) {{
                 text=True,
                 timeout=3,
                 check=False,
+                **win_subprocess_kwargs(),
             )
             if proc.returncode != 0 or not proc.stdout.strip():
                 return {}

@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 IS_FROZEN = bool(getattr(sys, "frozen", False))
 BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
@@ -117,6 +117,13 @@ def find_binary(
     return None
 
 
+def win_subprocess_kwargs() -> dict[str, Any]:
+    """Suppress console window popups when spawning child processes from a Windows GUI app."""
+    if is_windows() and hasattr(subprocess, "CREATE_NO_WINDOW"):
+        return {"creationflags": subprocess.CREATE_NO_WINDOW}
+    return {}
+
+
 def run_cmd(
     cmd: Sequence[str],
     *,
@@ -135,4 +142,5 @@ def run_cmd(
         capture_output=True,
         timeout=timeout,
         check=False,
+        **win_subprocess_kwargs(),
     )
