@@ -1,0 +1,225 @@
+{
+  "generated_at_utc": "2026-11-15T14:47:08.514412+00:00",
+  "metric_catalog": [
+    {
+      "id": "sevenzip_1t_mips",
+      "category": "CPU",
+      "label": "7-Zip Single-Thread",
+      "unit": "MIPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "sevenzip_mt_mips",
+      "category": "CPU",
+      "label": "7-Zip Multi-Thread",
+      "unit": "MIPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "cpu_fp64_gemm_gflops",
+      "category": "CPU",
+      "label": "CPU Dense FP64 GEMM",
+      "unit": "GFLOPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "sha256_1t_mb_s",
+      "category": "CPU",
+      "label": "SHA-256 Single-Core",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "sha256_mt_mb_s",
+      "category": "CPU",
+      "label": "SHA-256 All-Core",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "geekbench6_single",
+      "category": "CPU",
+      "label": "Geekbench 6 Single-Core",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "geekbench6_multi",
+      "category": "CPU",
+      "label": "Geekbench 6 Multi-Core",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "cinebench24_single",
+      "category": "CPU",
+      "label": "Cinebench 2024 Single-Core",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "cinebench24_multi",
+      "category": "CPU",
+      "label": "Cinebench 2024 Sustained Multi",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "blender_eevee_1440p_fps",
+      "category": "GPU Graphics",
+      "label": "Blender EEVEE 1440p Raster",
+      "unit": "FPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "gravitymark_1440p_fps",
+      "category": "GPU Graphics",
+      "label": "GravityMark 1440p (200k)",
+      "unit": "FPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "gravitymark_1440p_score",
+      "category": "GPU Graphics",
+      "label": "GravityMark 1440p Score",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "steel_nomad_light_score",
+      "category": "GPU Graphics",
+      "label": "3DMark Steel Nomad Light",
+      "unit": "pts",
+      "higher_is_better": true
+    },
+    {
+      "id": "gpu_fp32_gemm_tflops",
+      "category": "GPU Math",
+      "label": "PyTorch FP32 GEMM (4096)",
+      "unit": "TFLOPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "gpu_fp16_gemm_tflops",
+      "category": "GPU Math",
+      "label": "PyTorch FP16 GEMM (8192)",
+      "unit": "TFLOPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "gpu_fft2d_gflops",
+      "category": "GPU Math",
+      "label": "PyTorch 2D Complex FFT",
+      "unit": "GFLOPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "gpu_mem_triad_gb_s",
+      "category": "GPU Math",
+      "label": "GPU Memory Triad Bandwidth",
+      "unit": "GB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "cycles_gpu_spm",
+      "category": "GPU Math",
+      "label": "Blender Cycles GPU Path Trace",
+      "unit": "samples/min",
+      "higher_is_better": true
+    },
+    {
+      "id": "llama_7b_pp512",
+      "category": "GPU Math",
+      "label": "LLM 7B Prompt Compute (pp512)",
+      "unit": "tok/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "llama_7b_tg128",
+      "category": "GPU Math",
+      "label": "LLM 7B Token Gen BW (tg128)",
+      "unit": "tok/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "llama_14b_pp512",
+      "category": "GPU Math",
+      "label": "LLM 14B (>6GB) Prompt (pp512)",
+      "unit": "tok/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "llama_14b_tg128",
+      "category": "GPU Math",
+      "label": "LLM 14B (>6GB) Token Gen (tg128)",
+      "unit": "tok/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "fio_seq_read_mb_s",
+      "category": "SSD and I/O Compute",
+      "label": "fio Seq Read (1M QD8)",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "fio_seq_write_mb_s",
+      "category": "SSD and I/O Compute",
+      "label": "fio Seq Write (1M QD8)",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "fio_rand_read_qd1_mb_s",
+      "category": "SSD and I/O Compute",
+      "label": "fio 4K Rand Read (QD1)",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "fio_rand_read_qd1_lat_us",
+      "category": "SSD and I/O Compute",
+      "label": "fio 4K QD1 Read Latency",
+      "unit": "us",
+      "higher_is_better": false
+    },
+    {
+      "id": "fio_rand_read_qd32_iops",
+      "category": "SSD and I/O Compute",
+      "label": "fio 4K Rand Read (QD32)",
+      "unit": "IOPS",
+      "higher_is_better": true
+    },
+    {
+      "id": "duckdb_ingest_mb_s",
+      "category": "SSD and I/O Compute",
+      "label": "DuckDB Parquet Ingest Write",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "duckdb_spill_rows_m_s",
+      "category": "SSD and I/O Compute",
+      "label": "DuckDB Out-of-Core Spill Join",
+      "unit": "M rows/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "zstd_stream_mb_s",
+      "category": "SSD and I/O Compute",
+      "label": "zstd Parallel SSD Recompress",
+      "unit": "MB/s",
+      "higher_is_better": true
+    },
+    {
+      "id": "pipeline_total_sec",
+      "category": "SSD and I/O Compute",
+      "label": "Out-of-Core Pipeline Total Time",
+      "unit": "sec",
+      "higher_is_better": false
+    }
+  ],
+  "profiles": {},
+  "machines": {},
+  "runs": []
+}

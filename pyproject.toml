@@ -1,0 +1,13 @@
+[project]
+name = "rig-bench"
+version = "0.1.0"
+description = "Cross-platform CLI compute, graphics, and SSD-compute benchmark suite and local dashboard for macOS (Apple Silicon) and Windows 11 (x86_64 + CUDA)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb>=1.1.0",
+    "numpy>=2.0.0",
+    "psutil>=6.0.0",
+    "rich>=13.7.0",
+    "zstandard>=0.23.0",
+]

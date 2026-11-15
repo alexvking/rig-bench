@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rig-bench — Cross-Platform Compute, Graphics, and Thermal Telemetry</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="badge-pill">RIG-BENCH v0.3</span>
+      <h1>Cross-Platform Compute, Graphics, and Thermal Telemetry</h1>
+      <p id="subtitle">Loading benchmark profiles...</p>
+    </div>
+    <div class="controls">
+      <div class="control-group">
+        <label for="lensSelect">Metric Lens</label>
+        <select id="lensSelect">
+          <option value="raw" selected>Raw Throughput</option>
+          <option value="ppw">Performance per Watt (Workload-Aware)</option>
+          <option value="ppd">Performance per 100 USD</option>
+          <option value="ppwd">Perf per Watt per 100 USD (Efficiency x Value)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="baselineSelect">1.0x Base</label>
+        <select id="baselineSelect"></select>
+      </div>
+      <div class="control-group" id="challengerWrap">
+        <label for="challengerSelect">vs. Target</label>
+        <select id="challengerSelect"></select>
+      </div>
+      <button id="refreshBtn" class="btn-refresh" type="button">Refresh Data</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="mode-bar" aria-label="Comparison View Mode">
+      <span class="mode-bar-label">Comparison View</span>
+      <div class="mode-tabs" id="viewModeTabs">
+        <button type="button" class="mode-tab active" data-mode="all">All Configs (M4 + Desktop)</button>
+        <button type="button" class="mode-tab" data-mode="pc_souped_vs_stock">Desktop: Stock vs. Souped Up</button>
+        <button type="button" class="mode-tab" data-mode="pc_souped_vs_oc">Desktop: GPU OC vs. Souped Up</button>
+        <button type="button" class="mode-tab" data-mode="pc_oc_delta">Desktop: Stock vs. GPU OC</button>
+        <button type="button" class="mode-tab" data-mode="m4_vs_souped">M4 Mini vs. Souped Up</button>
+        <button type="button" class="mode-tab" data-mode="m4_vs_oc">M4 Mini vs. GPU OC</button>
+      </div>
+      <span class="mode-status" id="ocRunStatus"></span>
+    </section>
+
+    <section id="ocBanner" class="oc-banner hidden"></section>
+
+    <section id="rigCards" class="rig-cards"></section>
+    <section id="kpiStrip" class="kpi-strip"></section>
+
+    <section id="syncBanner" class="sync-banner hidden">
+      <div>
+        <strong>Ready to compare another machine or tuning profile?</strong>
+        <span>Run <code>uv run bench.py run --profile-id &lt;name&gt; --commit</code> on any machine or tuning pass, then click <strong>Refresh Data</strong>.</span>
+      </div>
+    </section>
+
+    <section class="grid-hero">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2 id="butterflyTitle">Relative Speedup Butterfly (Log2 Scale)</h2>
+          <span class="hint" id="butterflyHint">Symmetric log2 ratio — bars right of center beat baseline</span>
+        </div>
+        <div id="butterflyChart" class="chart-tall"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2>6-Axis Architecture Fingerprint</h2>
+          <span class="hint">Normalized % of active view leader per capability axis</span>
+        </div>
+        <div id="radarChart" class="chart-tall"></div>
+      </div>
+    </section>
+
+    <section class="grid-domains">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2>CPU Compute (Burst, SIMD, and Sustained)</h2>
+          <span class="hint">Bar width = % of leader; label = raw or active-lens metric</span>
+        </div>
+        <div id="cpuChart" class="chart-domain"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2>GPU Path Tracing, Shader FP32, and 2D FFT</h2>
+          <span class="hint">Cycles MetalRT vs CUDA + FP32 GEMM + cuFFT/MPS</span>
+        </div>
+        <div id="gpuRasterChart" class="chart-domain"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2>GPU Memory Bandwidth and LLM Compute</h2>
+          <span class="hint">Triad GB/s, Qwen2.5-7B pp512/tg128, FP16 GEMM</span>
+        </div>
+        <div id="gpuMathChart" class="chart-domain"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2>Uncached NVMe and Out-of-Core Compute</h2>
+          <span class="hint">fio direct I/O + 4GB-capped DuckDB spill + zstd</span>
+        </div>
+        <div id="storageChart" class="chart-domain"></div>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <div class="card-header">
+        <h2>Complete Benchmark Matrix</h2>
+        <span class="hint" id="manifestTimestamp"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="metricsTable">
+          <thead>
+            <tr id="tableHeadRow"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
